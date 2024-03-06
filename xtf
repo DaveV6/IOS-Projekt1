@@ -1,4 +1,4 @@
-#!/bin/sh                   
+#!/bin/bash                 
 # xbujzad00 David Bujzaš 
 # 26.2.2024
 
@@ -10,10 +10,9 @@ before=""
 currency=""
 com=""
 user=""
-file=("$@")
 
 helpMessage() {
-    echo "Usage: $0 [-h|--help] [FILTR] [PŘÍKAZ] UŽIVATEL LOG [LOG2 [...]"
+    echo "Usage: $0 [-h|--help] [FILTER] [COMMAND] USER LOG [LOG2 [...]"
     echo "Help:"
     echo "  -h, --help      Display this help message"
     echo "Filters:"
@@ -36,10 +35,18 @@ checkDate() {
 }
 
 filter() {
-    for file in []
-    awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 <= before || before == "") && ($2 >= after || after == "")' "$file"
+    for file in "${files[@]}"; do
+        if [ ! "$file" == *.gz ]; then
+            awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 <= before || before == "") && ($2 >= after || after == "")' "$file"
+        else
+            zcat "$file" | awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 <= before || before == "") && ($2 >= after || after == "")'
+        fi
+    done
 }
 
+listCurrency() {
+    filter | awk -F ';' '{print $3}' | sort | uniq
+}
 
 if [ $# -eq 0 ]; then
     echo "Invalid argument: At least one argument is required." >&2
@@ -87,15 +94,25 @@ case "$1" in
         ;;
 esac
 
-case "$com"
-
-if ![ -z "$1" ] && ![ -f "$1" ]; then
+if [ ! -z "$1" ] && [ ! -f "$1" ]; then
     user="$1"
+    shift
 else
     exit 1
 fi
-shift
 
-for arg in "$@"; do
-    file="$arg"
-done
+files=("$@")
+
+if [ ${#files[@]} -eq 0 ]; then
+    echo "No files were input" >&2
+    exit 1
+fi
+
+case "$com" in
+    "list")
+        filter
+        ;;
+    "list-currency")
+        listCurrency
+        ;;
+esac
