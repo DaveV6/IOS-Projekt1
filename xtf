@@ -1,0 +1,101 @@
+#!/bin/sh                   
+# xbujzad00 David Bujzaš 
+# 26.2.2024
+
+export POSIXLY_CORRECT=yes
+export LC_ALL=C
+
+after=""
+before=""
+currency=""
+com=""
+user=""
+file=("$@")
+
+helpMessage() {
+    echo "Usage: $0 [-h|--help] [FILTR] [PŘÍKAZ] UŽIVATEL LOG [LOG2 [...]"
+    echo "Help:"
+    echo "  -h, --help      Display this help message"
+    echo "Filters:"
+    echo "  -a              Filter after the input date"
+    echo "  -b              Filter before the input date"
+    echo "  -c              Filter by currency"
+    echo "Commands:"
+    echo "  list            List of records for input user"
+    echo "  list-currency   Sorted list of currencies in the file"
+    echo "  status          Statement of actual account balances grouped and sorted by currency"
+    echo "  profit          The customer's account statement with the fictitious return included."
+}
+
+checkDate() {
+    if date -d "$1" > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+filter() {
+    for file in []
+    awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 <= before || before == "") && ($2 >= after || after == "")' "$file"
+}
+
+
+if [ $# -eq 0 ]; then
+    echo "Invalid argument: At least one argument is required." >&2
+    exit 1
+fi
+
+case "$1" in 
+    "-h" | "--help")
+        helpMessage
+        exit 0
+        ;;
+esac
+
+while getopts "a:b:c:" opt; do
+    case $opt in
+        a)
+            if  checkDate "$OPTARG"; then
+                after=$OPTARG
+                shift 2
+            fi
+            ;;
+        b)
+            if checkDate "$OPTARG"; then
+                before=$OPTARG
+                shift 2
+            fi
+            ;;
+        c)
+            currency="$OPTARG"
+            shift 2
+            ;;
+        *)
+            exit 1 
+            ;;
+    esac
+done
+
+case "$1" in
+    "list" | "list-currency" | "status" | "profit")
+        com="$1"
+        shift
+        ;;
+    *)
+        com="list"
+        ;;
+esac
+
+case "$com"
+
+if ![ -z "$1" ] && ![ -f "$1" ]; then
+    user="$1"
+else
+    exit 1
+fi
+shift
+
+for arg in "$@"; do
+    file="$arg"
+done
