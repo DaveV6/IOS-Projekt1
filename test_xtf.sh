@@ -4,8 +4,8 @@
 # author: dzives
 # heavily inspired by: pseja
 # Usage:
-#     (1) Download the gist to your "xtf" directory: wget https://gist.githubusercontent.com/dzives/bcb93e43e6643f86e8225d35f6817391/raw/3eb0c21b373528b7752a39c8356982a4c1a7dc4e/test_xtf.sh
-#     (2) Then (for adding permission):                 chmod u+x test_xtf.sh
+#     (1) Download the gist to your "xtf" directory: click raw ⬆️, copy url, wget url
+#     (2) Then (for adding permission):              chmod u+x test_xtf.sh
 #     (3) Execute this command in "xtf" directory:   ./test_xtf.sh
 #     (4) If any test fails, it will output the difference between the expected result and your output with diff command into the diff folder
 #     (4) Debug :D
@@ -20,6 +20,8 @@ NORMAL='\033[0m'
 # test variables
 test_count=0
 correct=0
+
+# compile maze.c just in case
 
 rm -rf diff
 
@@ -327,13 +329,21 @@ run_test "" "${args[@]}"
 args=( "-c" "AB" "list" "Trader1" "cryptoexchange.log")
 run_test "" "${args[@]}"
 
+# 36 2 times -a
+args=("-a" "2024-01-25 15:29:29" "-a" "2024-01-25 16:29:29" "Trader1" "cryptoexchange.log")
+run_test "" "${args[@]}"
+
+# 37 2 times -b
+args=("-b" "2024-01-25 15:29:29" "-b" "2024-01-25 16:29:29" "Trader1" "cryptoexchange.log")
+run_test "" "${args[@]}"
+
 
 
 
 
 # print test results
 if [[ "$correct" == "$test_count" ]]; then
-    echo -e "\nPassed $correct / $test_count 🎉"
+    echo -e "\nPassed $correct / $test_count 🤓"
 else
     echo -e "\nPassed $correct / $test_count"
 fi

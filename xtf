@@ -26,6 +26,7 @@ helpMessage() {
     echo "  profit          The customer's account statement with the fictitious return included."
 }
 
+# checks if the input date is valid
 checkDate() {
     if date -d "$1" > /dev/null 2>&1; then
         return 0
@@ -34,20 +35,27 @@ checkDate() {
     fi
 }
 
+# filters the list
 filter() {
+    # iterates through each file in the files array
     for file in "${files[@]}"; do
+        # checks if the file does not have .gzip file extension
         if [[ $(file -b "$file") != *"gzip compressed data"* ]]; then
+            # filters the list with arguments input from .log file by the user using awk
             awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 < before || before == "") && ($2 > after || after == "")' "$file"
         else
+            # filters the list with arguments input from .gz file by the user using awk
             gzip -dc "$file" | awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" '($3 == currency || currency == "") && ($1 == user) && ($2 < before || before == "") && ($2 > after || after == "")'
         fi
     done
 }
 
+# lists the users currency
 listCurrency() {
     filter | awk -F ';' '{print $3}' | sort | uniq
 }
 
+# sums up all the currencies into one
 status() {
     filter | awk -F ';' '{sum[$3] += $4} 
     END {
@@ -57,10 +65,10 @@ status() {
     }' | sort
 }
 
+# sums up all the currencies into one, if they are greater than 0 adds up profit
+# if XTF_PROFIT is not set, sets it to default value (20)
 profit() {
-    filter | awk -F ';' -v profit="$XTF_PROFIT" '{
-        sum[$3] += $4
-    } 
+    filter | awk -F ';' -v profit="$XTF_PROFIT" '{sum[$3] += $4} 
     END {
         for(currency in sum) {
             if(sum[currency] > 0) {
@@ -74,11 +82,13 @@ profit() {
     }' | sort
 }
 
+# if there are no arguments output error
 if [ $# -eq 0 ]; then
     echo "Invalid argument: At least one argument is required." >&2
     exit 1
 fi
 
+# if the first index is -h or --help output the help message
 case "$1" in 
     "-h" | "--help")
         helpMessage
@@ -86,14 +96,23 @@ case "$1" in
         ;;
 esac
 
+# parsing filter arguments
 while getopts "a:b:c:" opt; do
     case $opt in
         a)
+            if [ -n "$after" ]; then
+                exit 1
+            fi
+
             if  checkDate "$OPTARG"; then
                 after=$OPTARG
             fi
             ;;
         b)
+            if [ -n "$before" ]; then
+                exit 1
+            fi
+
             if checkDate "$OPTARG"; then
                 before=$OPTARG
             fi
@@ -107,8 +126,10 @@ while getopts "a:b:c:" opt; do
     esac
 done
 
+# shifts filters
 shift $((OPTIND-1))
 
+# sets com variable to the user input command
 case "$1" in
     "list" | "list-currency" | "status" | "profit")
         com="$1"
@@ -119,6 +140,7 @@ case "$1" in
         ;;
 esac
 
+# if the string on index 1 is not empty or is not a file sets user to string on index 1
 if [ -n "$1" ] && [ ! -f "$1" ]; then
     user="$1"
     shift
@@ -128,6 +150,7 @@ fi
 
 files=("$@")
 
+# iterates through files array and checks if the file is valid
 for file in "${files[@]}"; do
     if [ ! -f "$file" ]; then
         echo "$file is not a valid file." >&2
@@ -135,11 +158,18 @@ for file in "${files[@]}"; do
     fi
 done
 
+# if there are no files input output error message
 if [ ${#files[@]} -eq 0 ]; then
     echo "No files were input" >&2
     exit 1
 fi
 
+# iterates through files array and checks if the input file has the wrong amount of columns
+for file in "${files[@]}"; do
+    awk '{if (NF > 4) {printf "The file has more than 4 columns"; exit 1;}}' "$file"
+done
+
+# switches commands based on user input
 case "$com" in
     "list")
         filter
