@@ -12,7 +12,7 @@ com=""
 user=""
 
 helpMessage() {
-    echo "Usage: $0 [-h|--help] [FILTER] [COMMAND] USER LOG [LOG2 [...]"
+    echo "Usage: $0 [-h|--help] [FILTER] [COMMAND] USER LOG [LOG2 [...]]"
     echo "Help:"
     echo "  -h, --help      Display this help message"
     echo "Filters:"
@@ -31,9 +31,28 @@ checkDate() {
     if date -d "$1" > /dev/null 2>&1; then
         return 0
     else
-        echo "Invalid date format" >&2
+        echo "Invalid date format." >&2
         exit 1
     fi
+}
+
+checkFile() {
+    # checks if all the columns in file are valid using regex and filters the list with arguments input from .log or .gz file by the user using awk
+    awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" -v userFormat="$userFormat" -v dateFormat="$dateFormat" -v curFormat="$curFormat" -v numFormat="$numFormat" '
+        function isValidUser(user) {
+            return (user ~ userFormat);
+        }
+        function isValidDate(date) {
+            return (date ~ dateFormat);
+        }
+        function isValidCurrency(cur) {
+            return (cur ~ curFormat);
+        }
+        function isValidNumber(num) {
+            return (num ~ numFormat);
+        }
+        ( !isValidUser($1) || !isValidDate($2) || !isValidCurrency($3) || !isValidNumber($4) ) { exit 1 }
+        ( ($3 == currency || currency == "") && ($1 == user) && ($2 < before || before == "") && ($2 > after || after == "") )'
 }
 
 # filters the list
@@ -53,49 +72,17 @@ filter() {
         if [[ $(file -b "$file") != *"gzip compressed data"* ]]; then
             # if fields are empty it exits with 1 and triggers the error message
             if awk -F ';' '($1 == "" || $2 == "" || $3 == "" || $4 == "") { exit 1 }' "$file"; then
-                # checks if all the columns in file are valid using regex and filters the list with arguments input from .log file by the user using awk
-                awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" -v userFormat="$userFormat" -v dateFormat="$dateFormat" -v curFormat="$curFormat" -v numFormat="$numFormat" '
-                    function isValidUser(user) {
-                        return (user ~ userFormat);
-                    }
-                    function isValidDate(date) {
-                        return (date ~ dateFormat);
-                    }
-                    function isValidCurrency(cur) {
-                        return (cur ~ curFormat);
-                    }
-                    function isValidNumber(num) {
-                        return (num ~ numFormat);
-                    }
-                    ( !isValidUser($1) || !isValidDate($2) || !isValidCurrency($3) || !isValidNumber($4) ) { exit 1 }
-                    ( ($3 == currency || currency == "") && ($1 == user) && ($2 < before || before == "") && ($2 > after || after == "") )
-                ' "$file" || exit 1
+                cat < "$file" | checkFile
             else
-                echo "Fields are empty in $file" >&2
+                echo "Fields are empty in $file." >&2
                 exit 1
             fi
         else
             # if fields are empty it exits with 1 and triggers the error message
             if gzip -dc "$file" | awk -F ';' '($1 == "" || $2 == "" || $3 == "" || $4 == "") { exit 1 }'; then
-                #  checks if all the columns in file are valid using regex and filters the list with arguments input from .gz file by the user using awk
-                gzip -dc "$file" | awk -F ';' -v currency="$currency" -v before="$before" -v after="$after" -v user="$user" -v userFormat="$userFormat" -v dateFormat="$dateFormat" -v curFormat="$curFormat" -v numFormat="$numFormat" '
-                    function isValidUser(user) {
-                        return (user ~ userFormat);
-                    }
-                    function isValidDate(date) {
-                        return (date ~ dateFormat);
-                    }
-                    function isValidCurrency(cur) {
-                        return (cur ~ curFormat);
-                    }
-                    function isValidNumber(num) {
-                        return (num ~ numFormat);
-                    }
-                    ( !isValidUser($1) || !isValidDate($2) || !isValidCurrency($3) || !isValidNumber($4) ) { exit 1 }
-                    ( ($3 == currency || currency == "") && ($1 == user) && ($2 < before || before == "") && ($2 > after || after == "") )
-                ' || exit 1
+                gzip -dc "$file" | checkFile
             else
-                echo "Fields are empty in $file" >&2
+                echo "Fields are empty in $file." >&2
                 exit 1
             fi
         fi
@@ -136,7 +123,7 @@ profit() {
 
 # if there are no arguments output error
 if [ $# -eq 0 ]; then
-    echo "Enter at least one argument to run the script!" >&2
+    echo "Enter at least one argument to run the script." >&2
     exit 1
 fi
 
@@ -153,7 +140,7 @@ while getopts "a:b:c:" opt; do
     case $opt in
         a)
             if [ -n "$after" ]; then
-                echo "The filter -a cannot be entered more than once!" >&2
+                echo "The filter -a cannot be entered more than once." >&2
                 exit 1
             fi
 
@@ -163,7 +150,7 @@ while getopts "a:b:c:" opt; do
             ;;
         b)
             if [ -n "$before" ]; then
-                echo "The filter -b cannot be entered more than once!" >&2
+                echo "The filter -b cannot be entered more than once." >&2
                 exit 1
             fi
 
@@ -173,9 +160,13 @@ while getopts "a:b:c:" opt; do
             ;;
         c)
             currency="$OPTARG"
+            if [[ ! "$currency" =~ ^[A-Z]{3}$ ]]; then
+                echo "The currency is in the wrong format." >&2
+                exit 1
+            fi
             ;;
         *)
-            echo "You have entered an invalid filter! Try again." >&2
+            echo "You have entered an invalid filter. Try again." >&2
             exit 1 
             ;;
     esac
@@ -184,7 +175,7 @@ done
 # shifts filters
 shift $((OPTIND-1))
 
-# sets com variable to the user input command
+# sets command variable to the user input command
 case "$1" in
     "list" | "list-currency" | "status" | "profit")
         com="$1"
@@ -200,7 +191,7 @@ if [ -n "$1" ] && [ ! -f "$1" ]; then
     user="$1"
     shift
 else
-    echo "Invalid user!" >&2
+    echo "Invalid trader." >&2
     exit 1
 fi
 
@@ -216,7 +207,7 @@ done
 
 # if there are no files input output error message
 if [ ${#files[@]} -eq 0 ]; then
-    echo "No files were input" >&2
+    echo "No files were input." >&2
     exit 1
 fi
 
@@ -235,7 +226,7 @@ case "$com" in
         profit
         ;;
     *)
-        echo "You have entered an invalid command! Try again." >&2
+        echo "You have entered an invalid command. Try again." >&2
         exit 1
         ;;
 esac
