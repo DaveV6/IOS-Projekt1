@@ -65,7 +65,7 @@ filter() {
     # regex user format
     userFormat='[[:print:]]+$'
     # regex currency format
-    curFormat='^[A-Z]{3}$'
+    curFormat='^[A-Za-z]{3}$'
     # regex number format
     numFormat='[-]?[0-9]+.[0-9]+$'
     
@@ -163,7 +163,7 @@ while getopts "a:b:c:" opt; do
             ;;
         c)
             currency="$OPTARG"
-            if [[ ! "$currency" =~ ^[A-Z]{3}$ ]]; then
+            if [[ ! "$currency" =~ ^[A-Za-z]{3}$ ]]; then
                 echo "The currency is in the wrong format." >&2
                 exit 1
             fi
