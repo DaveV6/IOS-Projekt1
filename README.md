@@ -1,3 +1,5 @@
+# Hodnotenie
+15/15
 # Popis úlohy
 
 Jako správní technologičtí vizionáři se i Vaše firma rozhodla vytvořit svou vlastní kryptoměnovou burzu, nazvanou XTF (eXtortion, Travesty, Fraud). Burza svým klientům umožňuje vkládat finanční prostředky ve formě kryptoměn i fiat měn; provádět směnu svých prostředků za měny jiné; úschovu prostředků a půjčování prostředků (tzv. margin).
